@@ -10,6 +10,11 @@ import importlib
 from .utils import CTCLabelConverter
 import math
 
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
+
 def custom_mean(x):
     return x.prod()**(2.0/np.sqrt(len(x)))
 
@@ -153,7 +158,7 @@ def recognizer_predict(model, converter, test_loader, batch_max_length,\
 def get_recognizer(recog_network, network_params, character,\
                    separator_list, dict_list, model_path,\
                    device = 'cpu', quantize = True):
-
+    LOGGER.info(f"[{__name__}]:\n{character=}\n{separator_list=}\n{dict_list=}")
     converter = CTCLabelConverter(character, separator_list, dict_list)
     num_class = len(converter.character)
 
@@ -193,9 +198,11 @@ def get_text(character, imgH, imgW, recognizer, converter, image_list,\
     for char in ignore_char:
         try: ignore_idx.append(character.index(char)+1)
         except: pass
+    LOGGER.debug(f"ignore char: {''.join(character[i] for i in ignore_idx)}")
 
     coord = [item[0] for item in image_list]
     img_list = [item[1] for item in image_list]
+    # assert False, f"{imgH=}, {imgW=}"
     AlignCollate_normal = AlignCollate(imgH=imgH, imgW=imgW, keep_ratio_with_pad=True)
     test_data = ListDataset(img_list)
     test_loader = torch.utils.data.DataLoader(

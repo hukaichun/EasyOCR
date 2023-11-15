@@ -98,7 +98,7 @@ class Batch_Balanced_Dataset(object):
 
         for i, data_loader_iter in enumerate(self.dataloader_iter_list):
             try:
-                image, text = data_loader_iter.next()
+                image, text = next(data_loader_iter)
                 balanced_batch_images.append(image)
                 balanced_batch_texts += text
             except StopIteration:
@@ -121,14 +121,18 @@ def hierarchical_dataset(root, opt, select_data='/'):
     print(dataset_log)
     dataset_log += '\n'
     for dirpath, dirnames, filenames in os.walk(root+'/'):
+        print(root, dirpath, dirnames)
         if not dirnames:
+            print("mark False")
             select_flag = False
+            print(select_data)
             for selected_d in select_data:
                 if selected_d in dirpath:
                     select_flag = True
                     break
 
             if select_flag:
+                print("load")
                 dataset = OCRDataset(dirpath, opt)
                 sub_dataset_log = f'sub-directory:\t/{os.path.relpath(dirpath, root)}\t num samples: {len(dataset)}'
                 print(sub_dataset_log)

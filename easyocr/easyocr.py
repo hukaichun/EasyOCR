@@ -55,16 +55,21 @@ class Reader(object):
         self.download_enabled = download_enabled
 
         self.model_storage_directory = MODULE_PATH + '/model'
+        LOGGER.info(f"{self.model_storage_directory=}")
         if model_storage_directory:
             self.model_storage_directory = model_storage_directory
+        # create directory
         Path(self.model_storage_directory).mkdir(parents=True, exist_ok=True)
 
         self.user_network_directory = MODULE_PATH + '/user_network'
+        LOGGER.info(f"{self.user_network_directory=}")
         if user_network_directory:
             self.user_network_directory = user_network_directory
+        # create directory
         Path(self.user_network_directory).mkdir(parents=True, exist_ok=True)
         sys.path.append(self.user_network_directory)
 
+        # setup device
         if gpu is False:
             self.device = 'cpu'
             if verbose:
@@ -81,25 +86,37 @@ class Reader(object):
         else:
             self.device = gpu
 
+        # from .config
         self.detection_models = detection_models
+        LOGGER.info(f"{self.detection_models=}")
+        # from .config
         self.recognition_models = recognition_models
+        LOGGER.info(f"{self.recognition_models=}")
+
+        # assert False
 
         # check and download detection model
         self.support_detection_network = ['craft', 'dbnet18']
-        self.quantize=quantize, 
-        self.cudnn_benchmark=cudnn_benchmark
+        self.quantize=quantize, # init arg
+        self.cudnn_benchmark=cudnn_benchmark # init arg
         if detector:
+            LOGGER.info(f"check the detect_network and download if not exist")
             detector_path = self.getDetectorPath(detect_network)
+            LOGGER.info(f"{detector_path=}")
         
         # recognition model
         separator_list = {}
 
-        if recog_network in ['standard'] + [model for model in recognition_models['gen1']] + [model for model in recognition_models['gen2']]:
-            if recog_network in [model for model in recognition_models['gen1']]:
+        gen1_models = [model for model in recognition_models['gen1']]
+        gen2_models = [model for model in recognition_models['gen2']]
+        all_passible_recog_network = ['standard'] + gen1_models + gen2_models
+        LOGGER.info(f"{all_passible_recog_network}")
+        if recog_network in all_passible_recog_network:
+            if recog_network in gen1_models:
                 model = recognition_models['gen1'][recog_network]
                 recog_network = 'generation1'
                 self.model_lang = model['model_script']
-            elif recog_network in [model for model in recognition_models['gen2']]:
+            elif recog_network in gen2_models:
                 model = recognition_models['gen2'][recog_network]
                 recog_network = 'generation2'
                 self.model_lang = model['model_script']
@@ -166,8 +183,10 @@ class Reader(object):
                     model = recognition_models['gen2']['latin_g2']
                     recog_network = 'generation2'
             self.character = model['characters']
+            LOGGER.info(f"{self.character=}")
 
             model_path = os.path.join(self.model_storage_directory, model['filename'])
+            LOGGER.info(f"{model_path=}")#; assert False
             # check recognition model file
             if recognizer:
                 if os.path.isfile(model_path) == False:
@@ -209,6 +228,7 @@ class Reader(object):
         dict_list = {}
         for lang in lang_list:
             dict_list[lang] = os.path.join(BASE_PATH, 'dict', lang + ".txt")
+        LOGGER.info(f"{dict_list=}")#; assert False
 
         if detector:
             self.detector = self.initDetector(detector_path)
@@ -228,6 +248,7 @@ class Reader(object):
                     }
             else:
                 network_params = recog_config['network_params']
+            LOGGER.info(f"{network_params=}")
             self.recognizer, self.converter = get_recognizer(recog_network, network_params,\
                                                          self.character, separator_list,\
                                                          dict_list, model_path, device = self.device, quantize=quantize)
@@ -280,6 +301,7 @@ class Reader(object):
     
     def setModelLanguage(self, language, lang_list, list_lang, list_lang_string):
         self.model_lang = language
+        LOGGER.info(f"{self.model_lang=}")
         if set(lang_list) - set(list_lang) != set():
             if language == 'ch_tra' or language == 'ch_sim':
                 language = 'chinese'
@@ -307,6 +329,7 @@ class Reader(object):
             symbol = '0123456789!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
         self.lang_char = set(self.lang_char).union(set(symbol))
         self.lang_char = ''.join(self.lang_char)
+        LOGGER.info(f"{self.lang_char=}")
 
     def detect(self, img, min_size = 20, text_threshold = 0.7, low_text = 0.4,\
                link_threshold = 0.4,canvas_size = 2560, mag_ratio = 1.,\
@@ -366,6 +389,7 @@ class Reader(object):
             ignore_char = ''.join(set(blocklist))
         else:
             ignore_char = ''.join(set(self.character)-set(self.lang_char))
+        LOGGER.info(f"{ignore_char=}")
 
         if self.model_lang in ['chinese_tra','chinese_sim']: decoder = 'greedy'
 
