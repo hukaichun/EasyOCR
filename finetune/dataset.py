@@ -125,9 +125,9 @@ def hierarchical_dataset(root, opt, select_data='/'):
     print(dataset_log)
     dataset_log += '\n'
     for dirpath, dirnames, filenames in os.walk(root+'/'):
-        print(root, dirpath, dirnames)
+        print(f"{root=}, {dirpath=}, {dirnames=}")
         if not dirnames:
-            print("mark False")
+            print("mark False--")
             select_flag = False
             print(select_data)
             for selected_d in select_data:
@@ -137,7 +137,8 @@ def hierarchical_dataset(root, opt, select_data='/'):
 
             if select_flag:
                 print("load")
-                dataset = OCRDataset(dirpath, opt)
+                # dataset = OCRDataset(dirpath, opt)
+                dataset = OCRDatasetModified(dirpath, opt.character, opt.label_max_length, opt.rgb, opt.sensitive)
                 sub_dataset_log = f'sub-directory:\t/{os.path.relpath(dirpath, root)}\t num samples: {len(dataset)}'
                 print(sub_dataset_log)
                 dataset_log += f'{sub_dataset_log}\n'
