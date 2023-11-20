@@ -1,0 +1,12 @@
+train_data:
+  - "./all_data/en_train"
+valid_data:
+  - "./all_data/en_val"
+workers: 6
+batch_size: 32
+imgH: 64
+imgW: 600
+rgb: Fasle
+contrast_adjust: 0.0
+sensitive: True
+PAD: True

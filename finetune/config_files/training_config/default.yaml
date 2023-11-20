@@ -1,0 +1,8 @@
+lr: 1.
+beta1: 0.9
+rho: 0.95
+eps: 0.00000001
+grad_clip: 5
+freeze_FeatureFxtraction: True
+freeze_SequenceModeling: False
+training_episode: 1000

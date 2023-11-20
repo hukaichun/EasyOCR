@@ -1,16 +1,12 @@
 import os
-import sys
 import re
-import six
 import math
 import torch
 import pandas  as pd
 
-from natsort import natsorted
 from PIL import Image
 import numpy as np
-from torch.utils.data import Dataset, ConcatDataset, Subset
-from torch._utils import _accumulate
+from torch.utils.data import Dataset, ConcatDataset
 import torchvision.transforms as transforms
 
 import logging
@@ -31,176 +27,33 @@ def adjust_contrast_grey(img, target = 0.4):
         img = np.maximum(np.full(img.shape, 0) ,np.minimum(np.full(img.shape, 255), img)).astype(np.uint8)
     return img
 
-
-class Batch_Balanced_Dataset(object):
-
-    def __init__(self, opt):
-        """
-        Modulate the data ratio in the batch.
-        For example, when select_data is "MJ-ST" and batch_ratio is "0.5-0.5",
-        the 50% of the batch is filled with MJ and the other 50% of the batch is filled with ST.
-        """
-        log = open(f'./saved_models/{opt.experiment_name}/log_dataset.txt', 'a')
-        dashed_line = '-' * 80
-        print(dashed_line)
-        log.write(dashed_line + '\n')
-        print(f'dataset_root: {opt.train_data}\nopt.select_data: {opt.select_data}\nopt.batch_ratio: {opt.batch_ratio}')
-        log.write(f'dataset_root: {opt.train_data}\nopt.select_data: {opt.select_data}\nopt.batch_ratio: {opt.batch_ratio}\n')
-        assert len(opt.select_data) == len(opt.batch_ratio)
-
-        _AlignCollate = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD, contrast_adjust = opt.contrast_adjust)
-        self.data_loader_list = []
-        self.dataloader_iter_list = []
-        batch_size_list = []
-        Total_batch_size = 0
-        for selected_d, batch_ratio_d in zip(opt.select_data, opt.batch_ratio):
-            _batch_size = max(round(opt.batch_size * float(batch_ratio_d)), 1)
-            print(dashed_line)
-            log.write(dashed_line + '\n')
-            _dataset, _dataset_log = hierarchical_dataset(root=opt.train_data, opt=opt, select_data=[selected_d])
-            total_number_dataset = len(_dataset)
-            log.write(_dataset_log)
-
-            """
-            The total number of data can be modified with opt.total_data_usage_ratio.
-            ex) opt.total_data_usage_ratio = 1 indicates 100% usage, and 0.2 indicates 20% usage.
-            See 4.2 section in our paper.
-            """
-            number_dataset = int(total_number_dataset * float(opt.total_data_usage_ratio))
-            dataset_split = [number_dataset, total_number_dataset - number_dataset]
-            indices = range(total_number_dataset)
-            _dataset, _ = [Subset(_dataset, indices[offset - length:offset])
-                           for offset, length in zip(_accumulate(dataset_split), dataset_split)]
-            selected_d_log = f'num total samples of {selected_d}: {total_number_dataset} x {opt.total_data_usage_ratio} (total_data_usage_ratio) = {len(_dataset)}\n'
-            selected_d_log += f'num samples of {selected_d} per batch: {opt.batch_size} x {float(batch_ratio_d)} (batch_ratio) = {_batch_size}'
-            print(selected_d_log)
-            log.write(selected_d_log + '\n')
-            batch_size_list.append(str(_batch_size))
-            Total_batch_size += _batch_size
-
-            _data_loader = torch.utils.data.DataLoader(
-                _dataset, batch_size=_batch_size,
-                shuffle=True,
-                num_workers=int(opt.workers), #prefetch_factor=2,persistent_workers=True,
-                collate_fn=_AlignCollate, pin_memory=True)
-            self.data_loader_list.append(_data_loader)
-            self.dataloader_iter_list.append(iter(_data_loader))
-
-        Total_batch_size_log = f'{dashed_line}\n'
-        batch_size_sum = '+'.join(batch_size_list)
-        Total_batch_size_log += f'Total_batch_size: {batch_size_sum} = {Total_batch_size}\n'
-        Total_batch_size_log += f'{dashed_line}'
-        opt.batch_size = Total_batch_size
-
-        print(Total_batch_size_log)
-        log.write(Total_batch_size_log + '\n')
-        log.close()
-
-    def get_batch(self):
-        balanced_batch_images = []
-        balanced_batch_texts = []
-
-        for i, data_loader_iter in enumerate(self.dataloader_iter_list):
-            try:
-                image, text = next(data_loader_iter)
-                balanced_batch_images.append(image)
-                balanced_batch_texts += text
-            except StopIteration:
-                self.dataloader_iter_list[i] = iter(self.data_loader_list[i])
-                image, text = self.dataloader_iter_list[i].next()
-                balanced_batch_images.append(image)
-                balanced_batch_texts += text
-            except ValueError:
-                pass
-
-        balanced_batch_images = torch.cat(balanced_batch_images, 0)
-
-        return balanced_batch_images, balanced_batch_texts
-
-
-def hierarchical_dataset(root, opt, select_data='/'):
-    """ select_data='/' contains all sub-directory of root directory """
-    dataset_list = []
-    dataset_log = f'dataset_root:    {root}\t dataset: {select_data[0]}'
-    print(dataset_log)
-    dataset_log += '\n'
-    for dirpath, dirnames, filenames in os.walk(root+'/'):
-        print(f"{root=}, {dirpath=}, {dirnames=}")
-        if not dirnames:
-            print("mark False--")
-            select_flag = False
-            print(select_data)
-            for selected_d in select_data:
-                if selected_d in dirpath:
-                    select_flag = True
-                    break
-
-            if select_flag:
-                print("load")
-                # dataset = OCRDataset(dirpath, opt)
-                dataset = OCRDatasetModified(dirpath, opt.character, opt.label_max_length, opt.rgb, opt.sensitive)
-                sub_dataset_log = f'sub-directory:\t/{os.path.relpath(dirpath, root)}\t num samples: {len(dataset)}'
-                print(sub_dataset_log)
-                dataset_log += f'{sub_dataset_log}\n'
-                dataset_list.append(dataset)
-
-    concatenated_dataset = ConcatDataset(dataset_list)
-
-    return concatenated_dataset, dataset_log
-
-class OCRDataset(Dataset):
-
-    def __init__(self, root, opt):
-
-        self.root = root
-        self.opt = opt
-        print(root)
-        self.df = pd.read_csv(os.path.join(root,'labels.csv'), sep='^([^,]+),', engine='python', usecols=['filename', 'words'], keep_default_na=False)
-        self.nSamples = len(self.df)
-
-        if self.opt.data_filtering_off:
-            self.filtered_index_list = [index + 1 for index in range(self.nSamples)]
-        else:
-            self.filtered_index_list = []
-            for index in range(self.nSamples):
-                label = self.df.at[index,'words']
-                try:
-                    if len(label) > self.opt.batch_max_length:
-                        continue
-                except:
-                    print(label)
-                out_of_char = f'[^{self.opt.character}]'
-                if re.search(out_of_char, label.lower()):
-                    continue
-                self.filtered_index_list.append(index)
-            self.nSamples = len(self.filtered_index_list)
-
-    def __len__(self):
-        return self.nSamples
-
-    def __getitem__(self, index):
-        index = self.filtered_index_list[index]
-        img_fname = self.df.at[index,'filename']
-        img_fpath = os.path.join(self.root, img_fname)
-        label = self.df.at[index,'words']
-
-        if self.opt.rgb:
-            img = Image.open(img_fpath).convert('RGB')  # for color image
-        else:
-            img = Image.open(img_fpath).convert('L')
-
-        if not self.opt.sensitive:
-            label = label.lower()
-
-        # We only train and evaluate on alphanumerics (or pre-defined character set in train.py)
-        out_of_char = f'[^{self.opt.character}]'
-        label = re.sub(out_of_char, '', label)
-
-        return (img, label)
+def load_dataset(*data_set_roots:str, 
+                  character:str, 
+                  # default parameters
+                  label_max_length=34,
+                  imgH:int=64,
+                  imgW:int=600,
+                  keep_ratio_with_pad:bool=False,
+                  contrast_adjust:float=0,
+                  batch_size:int=32,
+                  shuffle:bool=True,
+                  num_workers:int=6,
+                  prefetch_factor:int=512) -> torch.utils.data.DataLoader:
+    ocrs = [OCRDataset(root=root, character=character, label_max_length=label_max_length) for root in data_set_roots]
+    ocr = ConcatDataset(ocrs)
+    aligncollate = AlignCollate(imgH=imgH, imgW=imgW, keep_ratio_with_pad=keep_ratio_with_pad, contrast_adjust=contrast_adjust)
+    return torch.utils.data.DataLoader(ocr, 
+                                       batch_size=batch_size, 
+                                       collate_fn=aligncollate, 
+                                       shuffle=shuffle, 
+                                       num_workers=num_workers,
+                                       prefetch_factor=prefetch_factor)
     
 
-class OCRDatasetModified(Dataset):
-    def __init__(self, *,root:str, character:str, label_max_length:int, rgb:bool=False, sensitive:bool=True):
+class OCRDataset(Dataset):
+    def __init__(self, *, root:str, character:str, label_max_length:int, rgb:bool=False, sensitive:bool=True):
+        LOGGER.info("dataset: %s", root)
+        
         self.root = root
         self.label_max_length = label_max_length
         self.character = character

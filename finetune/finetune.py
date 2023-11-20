@@ -1,4 +1,8 @@
 import typing as tp
+import logging
+
+from tqdm import tqdm
+from beautifultable import BeautifulTable
 
 import torch
 import torch.nn.functional as F
@@ -11,10 +15,22 @@ cudnn.deterministic = False
 import numpy as np
 from nltk.metrics.distance import edit_distance
 
-from dataset import OCRDatasetModified, AlignCollate
-from utils import CTCLabelConverter, Averager
+from utils import CTCLabelConverter
 
 
+LOGGER = logging.getLogger(__name__)
+
+
+def _print_result_wrapper(func):
+    def wrapper(*args, **kwarg):
+        result:tp.Dict = func(*args, **kwarg)
+        table = BeautifulTable()
+        table.columns.header = ["CTCLoss", "accuracy", "norm_ED"]
+        table.rows.append([result.get("CTCLoss", "--"), result.get("accuracy", "--"), result.get("norm_ED", "--")])
+        LOGGER.info("[%s]\n%s", func.__name__, table)
+        return result
+
+    return wrapper
 
 
 def get_easyocr_recognizer_and_training_converter(lang_list:tp.List[str]):
@@ -35,7 +51,8 @@ def get_easyocr_recognizer_and_training_converter(lang_list:tp.List[str]):
     training_converter = get_training_convertor(ref_converter)
     return recognizer, training_converter
 
-def training_epoch(model:torch.nn.Module, 
+@_print_result_wrapper
+def finetune_epoch(model:torch.nn.Module, 
                    criterion:torch.nn.CTCLoss, 
                    convertor:CTCLabelConverter, 
                    optimizer:torch.optim.Optimizer, 
@@ -44,7 +61,9 @@ def training_epoch(model:torch.nn.Module,
                    DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     losses = []
 
-    for image_tensors, labels in training_set_loader:
+    pbar = tqdm(training_set_loader)
+    pbar.set_description("training phase")
+    for image_tensors, labels in pbar:
         image = image_tensors.to(DEVICE)
         text, length = convertor.encode(labels)
         batch_size = image.size(0)
@@ -63,9 +82,16 @@ def training_epoch(model:torch.nn.Module,
         optimizer.step()
 
         losses.append(cost.cpu().detach().numpy())
-    
-    return np.asarray(losses)
 
+    ctc_losses = np.asarray(losses)
+
+    result = {
+        "CTCLoss": ctc_losses.mean()
+    }
+    return result
+
+
+@_print_result_wrapper
 def validation(model:torch.nn.Module, 
                criterion:torch.nn.CTCLoss, 
                converter:CTCLabelConverter, 
@@ -76,12 +102,15 @@ def validation(model:torch.nn.Module,
     length_of_data = 0
     losses = []
     norm_EDs = []
-    norm_ED = 0
     confidence_score_list = []
+
+
 
     model.eval()
     with torch.no_grad():
-        for image_tensors, labels in validation_set_loader:
+        pbar = tqdm(validation_set_loader)
+        pbar.set_description("validation phase")
+        for image_tensors, labels in pbar:
             image = image_tensors.to(DEVICE)
             text, length = converter.encode(labels)
             batch_size = image.size(0)
@@ -89,17 +118,11 @@ def validation(model:torch.nn.Module,
             preds = model(image, text)
             preds_size = torch.IntTensor([preds.size(1)]*batch_size)
 
-            # torch.backends.cudnn.enabled = False
             cost = criterion(preds.log_softmax(2).permute(1,0,2), text, preds_size, length)
-            # torch.backends.cudnn.enabled = True
 
             # decoding phase
             _, preds_index = preds.max(2)
             preds_index = preds_index.view(-1)
-            preds_index = preds_index.cpu()
-            preds_size = preds_size.cpu()
-            # print(f"{preds_index.data=}, {preds_size.data=}")
-            # assert False
             preds_str = converter.decode_greedy(preds_index.data, preds_size.data)
 
             # compute accuracy & confidence score
@@ -111,20 +134,36 @@ def validation(model:torch.nn.Module,
                     n_correct+=1
                 
                 if len(gt) == 0 or len(pred) ==0:
-                    norm_ED += 0
+                    norm_ED = 0
                 elif len(gt) > len(pred):
-                    norm_ED += 1 - edit_distance(pred, gt) / len(gt)
+                    norm_ED = 1 - edit_distance(pred, gt) / len(gt)
                 else:
-                    norm_ED += 1 - edit_distance(pred, gt) / len(pred)
+                    norm_ED = 1 - edit_distance(pred, gt) / len(pred)
 
                 confidence_score = pred_max_prob.cumprod(dim=0)[-1]
                 confidence_score_list.append(confidence_score)
+                norm_EDs.append(norm_ED)
 
             length_of_data+=batch_size
             losses.append(cost.cpu().detach().numpy())
     
     model.train()
-    accuracy = n_correct / float(length_of_data) *100
-    norm_ED = norm_ED / float(length_of_data)
+    accuracy = n_correct / float(length_of_data) 
 
-    return np.asarray(losses).mean(), accuracy, norm_ED
+    result = {
+        "CTCLoss": np.asarray(losses).mean(),
+        "accuracy": accuracy,
+        "norm_ED": np.asarray(norm_EDs).mean()
+    }
+    return result
+
+
+
+
+
+
+
+
+
+
+
