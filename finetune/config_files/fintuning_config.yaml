@@ -1,4 +1,0 @@
-experiment_name: OvO
-data_config: config_files/data_config/default.yaml
-model_config: config_files/model_config/default.yaml
-training_config: config_files/training_config/default.yaml

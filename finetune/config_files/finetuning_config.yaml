@@ -1,0 +1,44 @@
+experiment_name: OvO
+DS_log_level: "INFO"
+FT_log_level: "INFO"
+training_config:
+  skeleton: 
+    - "ch_tra"
+  model_ckpt: ""
+  lr: 1.
+  rho: 0.95
+  eps: 0.00000001
+  freeze_FeatureExtraction: True
+  freeze_SequenceModeling: False
+  training_episode: 1000
+  grad_clip: 5
+training_data_config:
+  train_data:
+    - "./all_data/en_train"
+  label_max_length: 34
+  workers: 6
+  batch_size: 32
+  prefetch_factor: 512
+  shuffle: True
+  imgH: 64
+  imgW: 600
+  rgb: Fasle
+  contrast_adjust: 0.0
+  sensitive: True
+  PAD: True
+  keep_ratio_with_pad: False
+validation_data_config:
+  valid_data:
+    - "./all_data/en_val"
+  label_max_length: 34
+  workers: 6
+  batch_size: 32
+  prefetch_factor: 512
+  shuffle: False
+  imgH: 64
+  imgW: 600
+  rgb: Fasle
+  contrast_adjust: 0.0
+  sensitive: True
+  PAD: True
+  keep_ratio_with_pad: False
