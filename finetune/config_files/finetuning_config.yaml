@@ -15,6 +15,7 @@ training_config:
 training_data_config:
   train_data:
     - "./all_data/en_train"
+    # - "./all_data/en_train2"
   label_max_length: 34
   workers: 6
   batch_size: 32

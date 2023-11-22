@@ -62,8 +62,8 @@ def get_save_to_path(prefix:str):
 
 
 
-def main():
-    config = load_config("./config_files/finetuning_config.yaml")
+def main(config_path:str="./config_files/finetuning_config.yaml"):
+    config = load_config(config_path)
     print_config(config)
 
     ds_log_level = logging.getLevelName(config["DS_log_level"])
@@ -148,6 +148,10 @@ def main():
             torch.save(model.state_dict(), f'{save_path}/best_norm_ED.pth')
 
 
-
 if __name__ == "__main__":
-    main()
+    configs = [
+        "./config_files/finetuning_config.yaml",
+    ]
+
+    for config in configs:
+        main(config)
