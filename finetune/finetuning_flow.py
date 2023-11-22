@@ -1,9 +1,11 @@
 import os
+import datetime
 import typing as tp
+import yaml
 
 import torch
 import torch.optim as optim
-import yaml
+from torch.utils.tensorboard import SummaryWriter
 
 import dataset as DS
 import finetune as FT
@@ -47,8 +49,18 @@ def get_training_model_and_converter_and_optimizer(skeleton,
     optimizer = optim.Adadelta(filtered_parameters, lr=lr, rho=rho, eps=eps)
     return model, converter, optimizer
 
-def get_character(converter):
-    return ''.join(converter.character[1:])
+
+def get_save_to_path(prefix:str):
+    current_datetime = datetime.datetime.now()
+    current_time_string = current_datetime.strftime("%Y%m%d_%H%M%S")
+    full_path_name = "/".join(["./saved_models", prefix, current_time_string])
+
+    if not os.path.isdir(full_path_name):
+        os.makedirs(full_path_name)
+
+    return full_path_name
+
+
 
 def main():
     config = load_config("./config_files/finetuning_config.yaml")
@@ -103,6 +115,37 @@ def main():
         num_workers=validation_data_config["workers"],
         prefetch_factor=validation_data_config["prefetch_factor"]
     )
+
+    
+    save_path = get_save_to_path(config["experiment_name"])
+    writer = SummaryWriter(save_path)
+    print(save_path)
+
+    best_acc = -1
+    best_norm_ED = -1
+
+    # assert False
+    training_epoch = training_config["training_episode"]
+    for epoch in range(training_epoch):
+        training_info = FT.finetune_epoch(model, criterion, converter, optimizer, training_set_loader, training_config["grad_clip"])
+        writer.add_scalar("Training/CTCLoss", training_info["CTCLoss"], epoch)
+        writer.add_histogram("Training/CTCLosses", training_info["CTCLosses"], epoch)
+    
+        # print(training_info)
+        validation_info = FT.validation(model, criterion, converter, validation_set_loader)
+        writer.add_scalar("Validation/CTCLoss", validation_info["CTCLoss"], epoch)
+        writer.add_scalar("Validation/Accuracy", validation_info["Accuracy"], epoch)
+        writer.add_scalar("Validation/norm_ED", validation_info["Norm_ED"], epoch)
+        # print(validation_info)
+
+        torch.save(model.state_dict(), f'{save_path}/epoch_{epoch+1}.pth')
+        if validation_info["Accuracy"]>best_acc:
+            best_acc = validation_info["Accuracy"]
+            torch.save(model.state_dict(), f'{save_path}/best_acc.pth')
+        
+        if validation_info["Norm_ED"]>best_norm_ED:
+            best_norm_ED = validation_info["Norm_ED"]
+            torch.save(model.state_dict(), f'{save_path}/best_norm_ED.pth')
 
 
 

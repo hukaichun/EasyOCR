@@ -25,8 +25,8 @@ def _print_result_wrapper(func):
     def wrapper(*args, **kwarg):
         result:tp.Dict = func(*args, **kwarg)
         table = BeautifulTable()
-        table.columns.header = ["CTCLoss", "accuracy", "norm_ED"]
-        table.rows.append([result.get("CTCLoss", "--"), result.get("accuracy", "--"), result.get("norm_ED", "--")])
+        table.columns.header = ["CTCLoss", "Accuracy", "Norm_ED"]
+        table.rows.append([result.get("CTCLoss", "--"), result.get("Accuracy", "--"), result.get("Morm_ED", "--")])
         LOGGER.info("[%s]\n%s", func.__name__, table)
         return result
 
@@ -57,6 +57,7 @@ def finetune_epoch(model:torch.nn.Module,
                    convertor:CTCLabelConverter, 
                    optimizer:torch.optim.Optimizer, 
                    training_set_loader:torch.utils.data.DataLoader, 
+                   gradient_clip:float,
                    *,
                    DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     losses = []
@@ -78,7 +79,7 @@ def finetune_epoch(model:torch.nn.Module,
 
         optimizer.zero_grad(set_to_none=True)
         cost.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip)
         optimizer.step()
 
         losses.append(cost.cpu().detach().numpy())
@@ -86,7 +87,8 @@ def finetune_epoch(model:torch.nn.Module,
     ctc_losses = np.asarray(losses)
 
     result = {
-        "CTCLoss": ctc_losses.mean()
+        "CTCLoss": ctc_losses.mean(),
+        "CTCLosses": ctc_losses
     }
     return result
 
@@ -152,8 +154,8 @@ def validation(model:torch.nn.Module,
 
     result = {
         "CTCLoss": np.asarray(losses).mean(),
-        "accuracy": accuracy,
-        "norm_ED": np.asarray(norm_EDs).mean()
+        "Accuracy": accuracy,
+        "Norm_ED": np.asarray(norm_EDs).mean()
     }
     return result
 
