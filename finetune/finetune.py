@@ -93,6 +93,35 @@ def finetune_epoch(model:torch.nn.Module,
     return result
 
 
+def recognize(model:torch.nn.Module,
+              converter:CTCLabelConverter, 
+              validation_set_loader:torch.utils.data.DataLoader,
+              *,
+              DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+    model.eval()
+    result = []
+    with torch.no_grad():
+        pbar = tqdm(validation_set_loader)
+        pbar.set_description("prediction phase")
+        for image_tensors, labels in pbar:
+            image = image_tensors.to(DEVICE)
+            text, length = converter.encode(labels)
+            batch_size = image.size(0)
+
+            preds = model(image, text)
+            preds_size = torch.IntTensor([preds.size(1)]*batch_size)
+
+            _, preds_index = preds.max(2)
+            preds_index = preds_index.view(-1)
+            preds_str = converter.decode_greedy(preds_index.data.cpu().detach().numpy(), preds_size.data)
+
+            for gt, pred in zip(labels, preds_str):
+                result.append({"gt": gt, "pred": pred})
+    model.train()
+    return result
+
+
+
 @_print_result_wrapper
 def validation(model:torch.nn.Module, 
                criterion:torch.nn.CTCLoss, 
