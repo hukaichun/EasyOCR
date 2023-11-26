@@ -59,7 +59,10 @@ class OCRDataset(Dataset):
         self.character = character
         self.rgb = rgb
         self.sensitive = sensitive
-        self.df = pd.read_csv(os.path.join(root,'labels.csv'), sep='^([^,]+),', engine='python', usecols=['filename', 'words'], keep_default_na=False)
+        try:
+            self.df = pd.read_csv(os.path.join(root,'labels.csv'), sep='^([^,]+),', engine='python', usecols=['filename', 'words'], keep_default_na=False)
+        except:
+            self.df = pd.read_csv(os.path.join(root,'labels.csv'), sep='^([^,]+),', engine='python', usecols=['filename', 'words'], keep_default_na=False, encoding='big5')
         
         self._rename_label()
         self._skip_data_whose_label_is_longer_than(label_max_length)
