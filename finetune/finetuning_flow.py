@@ -49,6 +49,10 @@ def get_training_model_and_converter_and_optimizer(skeleton,
     optimizer = optim.Adadelta(filtered_parameters, lr=lr, rho=rho, eps=eps)
     return model, converter, optimizer
 
+def compute_gradient_norm(model):
+    filtered_parameters = [p for p in filter(lambda p:p.requires_grad, model.parameters())]
+    grad_norms = [p.grad.data.norm(2) for p in filtered_parameters]
+    return sum(grad_norms)**0.5
 
 def get_save_to_path(prefix:str):
     current_datetime = datetime.datetime.now()
@@ -59,7 +63,6 @@ def get_save_to_path(prefix:str):
         os.makedirs(full_path_name)
 
     return full_path_name
-
 
 
 def main(config_path:str="./config_files/finetuning_config.yaml"):
@@ -117,6 +120,13 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
     )
 
     
+    # setup learning rate scheduler
+    leraning_rate_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", 
+                                                                         factor=training_config["learning_rate_reduce_factor"], 
+                                                                         patience=training_config["patience"],
+                                                                         min_lr=training_config["minimum_learning_rate"])
+
+
     save_path = get_save_to_path(config["experiment_name"])
     writer = SummaryWriter(save_path)
     print(save_path)
@@ -128,7 +138,10 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
     training_epoch = training_config["training_episode"]
     for epoch in range(training_epoch):
         training_info = FT.finetune_epoch(model, criterion, converter, optimizer, training_set_loader, training_config["grad_clip"])
+        leraning_rate_scheduler.step(training_info["CTCLoss"])
         writer.add_scalar("Training/CTCLoss", training_info["CTCLoss"], epoch)
+        writer.add_scalar("Training/Learning_Rate", leraning_rate_scheduler._last_lr[-1], epoch)
+        writer.add_scalar("Training/Gradient_norm", compute_gradient_norm(model), epoch)
         writer.add_histogram("Training/CTCLosses", training_info["CTCLosses"], epoch)
     
         # print(training_info)
