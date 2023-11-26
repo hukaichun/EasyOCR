@@ -125,7 +125,7 @@ def validation(model:torch.nn.Module,
             # decoding phase
             _, preds_index = preds.max(2)
             preds_index = preds_index.view(-1)
-            preds_str = converter.decode_greedy(preds_index.data, preds_size.data)
+            preds_str = converter.decode_greedy(preds_index.data.cpu().detach().numpy(), preds_size.data)
 
             # compute accuracy & confidence score
             preds_prob = F.softmax(preds, dim=2)
