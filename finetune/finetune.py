@@ -33,7 +33,7 @@ def _print_result_wrapper(func):
     return wrapper
 
 
-def get_easyocr_recognizer_and_training_converter(lang_list:tp.List[str]):
+def get_easyocr_recognizer_and_training_converter(lang_list:tp.List[str], model_ckpt:str=""):
     import easyocr
     def get_training_convertor(ref_converter:easyocr.utils.CTCLabelConverter):
         if isinstance(ref_converter, CTCLabelConverter):
@@ -47,9 +47,12 @@ def get_easyocr_recognizer_and_training_converter(lang_list:tp.List[str]):
         return converter
     reader = easyocr.Reader(lang_list)
     recognizer = reader.recognizer
+    if model_ckpt:
+        ckpt = torch.load(model_ckpt)
+        recognizer.load_state_dict(ckpt, strict=False)
     ref_converter = reader.converter
     training_converter = get_training_convertor(ref_converter)
-    return recognizer, training_converter
+    return recognizer, training_converter, reader
 
 @_print_result_wrapper
 def finetune_epoch(model:torch.nn.Module, 

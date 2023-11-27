@@ -33,11 +33,9 @@ def get_training_model_and_converter_and_optimizer(skeleton,
                                      lr:float,
                                      rho:float,
                                      eps:float):
-    model, converter = FT.get_easyocr_recognizer_and_training_converter(skeleton) # skeleton=["ch_tra"]
+    model, converter, _ = FT.get_easyocr_recognizer_and_training_converter(skeleton, model_ckpt) # skeleton=["ch_tra"]
     # setup model
-    if model_ckpt:
-        ckpt = torch.load(model_ckpt)
-        model.load_state_dict(ckpt, strict=False)
+    
     if freeze_FeatureExtraction:
         for param in model.module.FeatureExtraction.parameters():
             param.requires_grad = False

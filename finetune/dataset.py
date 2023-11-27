@@ -66,6 +66,7 @@ class OCRDataset(Dataset):
         
         self._rename_label()
         self._skip_data_whose_label_is_longer_than(label_max_length)
+        self._skip_data_that_does_not_exist()
 
         self.nSamples = len(self.df)
         # assert self.df.apply(lambda row: len(row["words"])< self.label_max_length, axis=1).all(), f"please check the label length; maximum langth: {self.label_max_length=}"
@@ -94,6 +95,16 @@ class OCRDataset(Dataset):
             LOGGER.warning("Ignore data whose label is longer than %d: \n%s", length, self.df.loc[check_length])
             self.df = self.df.loc[~check_length]
             self.df.reset_index(inplace=True)
+
+    def _skip_data_that_does_not_exist(self):
+        def check_file_exist(filename):
+            fpath = os.path.join(self.root, filename)
+            return os.path.isfile(fpath)
+        valid_index = self.df.apply(lambda row: check_file_exist(row["filename"]), axis=1) == True
+        if (~valid_index).any():
+            LOGGER.warning("Ignore data whose file is not exist: \n%s", self.df.loc[~valid_index])
+        self.df = self.df.loc[valid_index]
+        self.df.reset_index(inplace=True)
 
     def _rename_label(self):
         # We only train and evaluate on alphanumerics #(or pre-defined character set in train.py)
