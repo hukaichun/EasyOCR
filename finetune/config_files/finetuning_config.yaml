@@ -15,6 +15,7 @@ training_config:
   learning_rate_reduce_factor: .3
   minimum_learning_rate: 0.00001
   patience: 5
+  save_freq: 100
 training_data_config:
   train_data:
     - "./all_data/en_train"

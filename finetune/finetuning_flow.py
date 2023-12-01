@@ -151,7 +151,7 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
         writer.add_scalar("Validation/norm_ED", validation_info["Norm_ED"], epoch)
         # print(validation_info)
 
-        torch.save(model.state_dict(), f'{save_path}/epoch_{epoch+1}.pth')
+        
         if validation_info["CTCLoss"]<best_ctc_loss:
             best_ctc_loss = validation_info["CTCLoss"]
             torch.save(model.state_dict(), f'{save_path}/best_loss.pth')
@@ -164,6 +164,8 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
             best_norm_ED = validation_info["Norm_ED"]
             torch.save(model.state_dict(), f'{save_path}/best_norm_ED.pth')
 
+        if epoch % training_config["save_freq"] == 0:
+            torch.save(model.state_dict(), f'{save_path}/epoch_{epoch+1}.pth')
 
 if __name__ == "__main__":
     configs = [
