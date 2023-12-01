@@ -5,6 +5,7 @@ import yaml
 
 import torch
 import torch.optim as optim
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 import dataset as DS
@@ -131,6 +132,7 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
 
     best_acc = -1
     best_norm_ED = -1
+    best_ctc_loss = np.inf
 
     # assert False
     training_epoch = training_config["training_episode"]
@@ -150,6 +152,10 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
         # print(validation_info)
 
         torch.save(model.state_dict(), f'{save_path}/epoch_{epoch+1}.pth')
+        if validation_info["CTCLoss"]<best_ctc_loss:
+            best_ctc_loss = validation_info["CTCLoss"]
+            torch.save(model.state_dict(), f'{save_path}/best_loss.pth')
+
         if validation_info["Accuracy"]>best_acc:
             best_acc = validation_info["Accuracy"]
             torch.save(model.state_dict(), f'{save_path}/best_acc.pth')
