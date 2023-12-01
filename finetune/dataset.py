@@ -63,7 +63,7 @@ class OCRDataset(Dataset):
             self.df = pd.read_csv(os.path.join(root,'labels.csv'), sep='^([^,]+),', engine='python', keep_default_na=False)
         except:
             self.df = pd.read_csv(os.path.join(root,'labels.csv'), sep='^([^,]+),', engine='python', keep_default_na=False, encoding='big5')
-        assert set(["filename","words"]).issubset(self.df.columns)
+        assert set(["filename","words"]).issubset(self.df.columns), f"{self.df.columns=}"
         self._rename_label()
         self._skip_data_whose_label_is_longer_than(label_max_length)
         self._skip_data_that_does_not_exist()
