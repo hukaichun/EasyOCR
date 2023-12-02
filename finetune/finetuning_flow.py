@@ -129,6 +129,14 @@ def main(config_path:str="./config_files/finetuning_config.yaml"):
     save_path = get_save_to_path(config["experiment_name"])
     writer = SummaryWriter(save_path)
     print(save_path)
+    
+    # 我偷加了下面五行(堅持要輸出configXDD)
+    with open(f'{save_path}/config_log.txt', 'a') as file:
+        import sys
+        sys.stdout = file 
+        print_config(config)
+        sys.stdout = sys.__stdout__  
+
 
     best_acc = -1
     best_norm_ED = -1
