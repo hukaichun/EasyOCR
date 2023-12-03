@@ -124,6 +124,11 @@ def recognize(model:torch.nn.Module,
     return result
 
 
+def compute_normED(pred:str, gt:str):
+    if len(gt) == 0 or len(pred) ==0:
+        return 0.
+    return 1. - edit_distance(pred, gt)/max(len(gt), len(pred))
+
 
 @_print_result_wrapper
 def validation(model:torch.nn.Module, 
@@ -166,17 +171,10 @@ def validation(model:torch.nn.Module,
             for gt,pred,pred_max_prob in zip(labels, preds_str, preds_max_prob):
                 if pred == gt:
                     n_correct+=1
-                
-                if len(gt) == 0 or len(pred) ==0:
-                    norm_ED = 0
-                elif len(gt) > len(pred):
-                    norm_ED = 1 - edit_distance(pred, gt) / len(gt)
-                else:
-                    norm_ED = 1 - edit_distance(pred, gt) / len(pred)
 
                 confidence_score = pred_max_prob.cumprod(dim=0)[-1]
                 confidence_score_list.append(confidence_score)
-                norm_EDs.append(norm_ED)
+                norm_EDs.append(compute_normED(pred, gt))
 
             length_of_data+=batch_size
             losses.append(cost.cpu().detach().numpy())
