@@ -49,7 +49,7 @@ def get_easyocr_recognizer_and_training_converter(lang_list:tp.List[str], model_
     recognizer = reader.recognizer
     if model_ckpt:
         ckpt = torch.load(model_ckpt)
-        recognizer.load_state_dict(ckpt, strict=False)
+        recognizer.load_state_dict(ckpt, strict=True)
     ref_converter = reader.converter
     training_converter = get_training_convertor(ref_converter)
     return recognizer, training_converter, reader
