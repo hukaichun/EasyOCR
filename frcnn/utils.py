@@ -86,6 +86,12 @@ class DetectedImage:
         image = self.ref_image
         return plot_bbox(image, bboxes, thickness=thickness)
     
+    def draw_all_box(self, thickness=3, score_thr=.6):
+        check_score = self._info["score"] > score_thr
+        bboxes = self._info.loc[check_score, ["x0", "y0", "x1", "y1"]].to_numpy()
+        image = self.ref_image
+        return plot_bbox(image, bboxes, thickness=thickness)
+    
     def nms_filtering(self, iou_thr=.3):
         keeped_dgs = []
         for label, dg in self._info.groupby("label"):
