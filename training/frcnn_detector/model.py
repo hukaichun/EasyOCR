@@ -21,7 +21,7 @@ class FRCNNDetector(torch.nn.Module):
 
         if model_path:
             ckpt = torch.load(model_path)
-            self._fasterrcnn.load_state_dict(ckpt["model"])
+            self.load_state_dict(ckpt)
 
         self._classes = classes
     
@@ -29,8 +29,6 @@ class FRCNNDetector(torch.nn.Module):
         return self._fasterrcnn(images, targets)
 
     def predict(self, images:torch.Tensor):
-        # torch._assert(len(images.shape)==4, "")
-        result = []
         with torch.no_grad():
             outs = self._fasterrcnn(images)
         return [

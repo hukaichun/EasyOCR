@@ -1,0 +1,2 @@
+from .detected_image import DetectedImage, FakeDetectedImage
+from .frccnn_detected_image import FRCNNDetectedImage
