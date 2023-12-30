@@ -26,10 +26,10 @@ class DetectedImage:
 
     def __getitem__(self, idx) -> DetectedInstance:
         assert idx in self._info.index, f"{idx} not in {self._info.index}"
-        category = self._info.loc[idx, "label"]
+        label = self._info.loc[idx, "label"]
         score = self._info.loc[idx, "score"]
         bbox = self._info.loc[idx, ["x0", "y0", "x1", "y1"]]
-        return DetectedInstance(bbox, category, score, self._ref_image)
+        return DetectedInstance(bbox, label, score, self._ref_image)
 
     def fetch(self, label:tp.Union[str, int], *, score_thr=.6)-> tp.List[DetectedInstance]:
         check_label = self._info["label"] == label
