@@ -8,7 +8,7 @@ import numpy as np
 @dc.dataclass
 class DetectedInstance:
     bbox: np.ndarray
-    label: tp.Union[str, int]
+    info: tp.Union[str, int]
     score: float
     _ref_image: tp.Union[np.ndarray, torch.Tensor] #(H, W, C) (RGB)
 
@@ -30,3 +30,4 @@ class DetectedInstance:
             _ref_image_np = self._ref_image.numpy()
             _ref_image_np = _ref_image_np.transpose((1,2,0))
             return _ref_image_np.astype(np.uint8)
+        

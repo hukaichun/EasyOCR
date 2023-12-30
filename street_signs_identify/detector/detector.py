@@ -12,19 +12,20 @@ def parse_dict_out(dict_out:tp.Dict):
     df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1"])
     df["label"] = dict_out["labels"].numpy()
     df.loc[:, "score"] = dict_out["scores"].numpy()
-    df[["x0", "y0", "x1", "y1"]] = dict_out["boxes"].numpy().round().astype(int)
+    df.loc[:, ["x0", "y0", "x1", "y1"]] = dict_out["boxes"].numpy().round().astype(int)
     return df
 
 
-class DetectorBase(abc.ABC):
+class Detector(abc.ABC):
     def __init__(self) -> None:
         super().__init__()
 
     def detect(self, *images:np.ndarray)-> tp.List[dtp.DetectedImage]:
-        outs = self._detection_flow(images)
-        return [
-            dtp.DetectedImage(img, parse_dict_out(out)) for img, out in zip(images, outs)
-        ]
+        outs: tp.List[tp.Dict] = self._detection_flow(images)
+        result = [dtp.DetectedImage(img, parse_dict_out(out)) for img, out in zip(images, outs)]
+        if len(result) == 1:
+            result=result[0]
+        return result
 
     @abc.abstractmethod
     def _detection_flow(self, images:np.ndarray) -> tp.Dict:

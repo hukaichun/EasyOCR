@@ -12,7 +12,14 @@ class TextReader(easyocr.Reader):
             ckpt = torch.load(model_ckpt)
             self.recognizer.load_state_dict(ckpt)
 
-    # def recognize(self, img: dtp.DetectedInstance):
+    def _recognizeDetectedInstance(self, detected_instance:dtp.DetectedInstance):
+        out = self.recognize(detected_instance.image)[0]
+        return dtp.DetectedInstance(out[0], out[1], out[2], detected_instance._ref_image)
 
+    def recognizeDetectedInstance(self, *detected_instances: dtp.DetectedInstance):
+        return [
+            self._recognizeDetectedInstance(instance) for instance in detected_instances
+        ]
+            
     
 

@@ -43,7 +43,7 @@ class DetectionCollate:
         else:
             images = batch
 
-        images_np = [image.transpose((2,0,1)) for image in images]
+        images_np = [image.transpose((2,0,1)) for image in images] # H,W,C to C,H,W format
         images_torch = torch.stack([torch.from_numpy(image).float() for image in images_np])
 
         if self._with_target:

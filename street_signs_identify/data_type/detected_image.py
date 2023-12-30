@@ -1,4 +1,5 @@
 import typing as tp
+import dataclasses as ds
 
 import torch
 from torchvision.ops import nms 
@@ -18,11 +19,13 @@ def plot_bbox(image:np.ndarray, bbox_list:tp.List[np.ndarray], thickness=1) -> n
         cv2.rectangle(_image, x0y0.astype(int), x1y1.astype(int), color=(255,0,0), thickness=thickness)
     return _image
 
-
+@ds.dataclass
 class DetectedImage:
-    def __init__(self, ref_image: tp.Union[np.ndarray, torch.Tensor], info: pd.DataFrame) -> None:
-        self._ref_image = ref_image
-        self._info = info
+    _ref_image: tp.Union[np.ndarray, torch.Tensor]
+    _info: pd.DataFrame
+    # def __init__(self, ref_image: tp.Union[np.ndarray, torch.Tensor], info: pd.DataFrame) -> None:
+    #     self._ref_image = ref_image
+    #     self._info = info
 
     def __getitem__(self, idx) -> DetectedInstance:
         assert idx in self._info.index, f"{idx} not in {self._info.index}"
@@ -30,6 +33,13 @@ class DetectedImage:
         score = self._info.loc[idx, "score"]
         bbox = self._info.loc[idx, ["x0", "y0", "x1", "y1"]]
         return DetectedInstance(bbox, label, score, self._ref_image)
+    
+    def __len__(self):
+        return len(self._info.index)
+
+    def __iter__(self):
+        for idx in self._info.index:
+            yield self[idx]
 
     def fetch(self, label:tp.Union[str, int], *, score_thr=.6)-> tp.List[DetectedInstance]:
         check_label = self._info["label"] == label
