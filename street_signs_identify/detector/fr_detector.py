@@ -26,7 +26,7 @@ class FRCNNDetector(torch.nn.Module):
         return self._fasterrcnn(images, targets)
 
 
-class FRCDetector(Detector):
+class FRDetector(Detector):
     def __init__(self, *, 
                  classes:tp.List[str]=['1', '2', '3', '4', '5', 'blue', 'brown', 'green', 'red', 'yellow', 'parking', 'limit_h', 'limit_speed' ,'14', '15'], 
                  model_ckpt:str=None,

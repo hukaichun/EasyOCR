@@ -20,7 +20,11 @@ class Detector(abc.ABC):
     def __init__(self) -> None:
         super().__init__()
 
-    def detect(self, *images:np.ndarray)-> tp.List[dtp.DetectedImage]:
+    def __call__(self, *images:np.ndarray)-> tp.Union[tp.List[dtp.DetectedImage], dtp.DetectedImage]:
+        # check all inputs are all valid
+        for image in images:
+            assert isinstance(image, np.ndarray)
+
         outs: tp.List[tp.Dict] = self._detection_flow(images)
         result = [dtp.DetectedImage(img, parse_dict_out(out)) for img, out in zip(images, outs)]
         if len(result) == 1:
