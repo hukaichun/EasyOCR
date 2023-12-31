@@ -1,12 +1,20 @@
 import typing as tp
-from typing import Dict
-from numpy import ndarray
 
 import torch
 from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+import pandas as pd
+import numpy as np
 
 from .detector import Detector
+
+
+def parse_dict_out(dict_out:tp.Dict):
+    df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1"])
+    df["label"] = dict_out["labels"].numpy()
+    df.loc[:, "score"] = dict_out["scores"].numpy()
+    df.loc[:, ["x0", "y0", "x1", "y1"]] = dict_out["boxes"].numpy().round().astype(int)
+    return df
 
 
 class FRCNNDetector(torch.nn.Module):
@@ -39,7 +47,7 @@ class FRDetector(Detector):
         self.__DEVICE = DEVICE
 
 
-    def _detection_flow(self, images: ndarray) -> Dict:
+    def _detection_flow(self, images: tp.List[np.ndarray]) -> tp.Dict:
 
         images_np = [image.transpose((2,0,1)) for image in images] # H,W,C to C,H,W format
         images_torch = torch.stack([torch.from_numpy(image).float() for image in images_np]).to(self.__DEVICE)
@@ -47,4 +55,5 @@ class FRDetector(Detector):
         with torch.no_grad():
             outs_torch = self._detector(images_torch)
         outs = [{k:v.to("cpu") for k,v in out_torch.items()} for out_torch in outs_torch]
+        outs = [parse_dict_out(dict_out) for dict_out in outs]
         return outs
