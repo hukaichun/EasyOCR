@@ -7,8 +7,8 @@ from .. import data_type as dtp
 
 
 class EasyOCRRecognizer(Recognizer):
-    def __init__(self, model_ckpt:str):
-        self._reader = easyocr.Reader(["ch_tra"], detector=False)
+    def __init__(self, model_ckpt:str=None, *, lang_list=["ch_tra"]):
+        self._reader = easyocr.Reader(lang_list, detector=False)
         if model_ckpt:
             ckpt = torch.load(model_ckpt)
             self._reader.recognizer.load_state_dict(ckpt)
