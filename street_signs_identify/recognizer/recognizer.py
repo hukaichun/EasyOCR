@@ -17,6 +17,11 @@ class Recognizer(abc.ABC):
         for detected_instance in detected_instances:
             assert isinstance(detected_instance, dtp.DetectedInstance)
 
-        return [
+        result = [
             self._recognize(instance) for instance in detected_instances
         ]
+
+        if len(result) == 1:
+            return result[0]
+
+        return result

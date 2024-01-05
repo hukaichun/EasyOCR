@@ -11,18 +11,21 @@ from .detected_instance import DetectedInstance
 
 
 
-def plot_bbox(image:np.ndarray, bbox_list:tp.List[np.ndarray], thickness=1) -> np.ndarray:
+def plot_bbox(image:np.ndarray, bbox_list:tp.List[np.ndarray], thickness=1, color=(255,0,0)) -> np.ndarray:
     _image = image.copy()
     for bbox in bbox_list:
         x0y0, x1y1 = bbox[:2], bbox[2:]
         # print(x0y0, x1y1, _image.shape)
-        cv2.rectangle(_image, x0y0.astype(int), x1y1.astype(int), color=(255,0,0), thickness=thickness)
+        cv2.rectangle(_image, x0y0.astype(int), x1y1.astype(int), color=color, thickness=thickness)
     return _image
 
 @ds.dataclass
 class DetectedImage:
     _ref_image: tp.Union[np.ndarray, torch.Tensor]
     info: pd.DataFrame
+
+    def __post_init__(self):
+        assert self.info.index.is_unique
 
     def __getitem__(self, idx) -> DetectedInstance:
         assert idx in self.info.index, f"{idx} not in {self.info.index}"
@@ -53,11 +56,11 @@ class DetectedImage:
         image = self.ref_image
         return plot_bbox(image, bboxes, thickness=thickness)
     
-    def draw_all_box(self, thickness=3, score_thr=.6):
+    def draw_all_box(self, thickness=3, score_thr=.6, color=(255,0,0)):
         check_score = self.info["score"] > score_thr
         bboxes = self.info.loc[check_score, ["x0", "y0", "x1", "y1"]].to_numpy()
         image = self.ref_image
-        return plot_bbox(image, bboxes, thickness=thickness)
+        return plot_bbox(image, bboxes, thickness=thickness, color=color)
     
     def nms_filtering(self, iou_thr=.3) -> "DetectedImage":
         keeped_dgs = []
@@ -69,6 +72,11 @@ class DetectedImage:
         keeped_dg = pd.concat(keeped_dgs).reset_index(drop=True)
         new_instance = DetectedImage(self.ref_image, keeped_dg)
         return new_instance
+    
+    def keeps_index(self, new_index:pd.Index):
+        new_index = new_index.unique()
+        new_info = self.info.loc[new_index].copy()
+        return DetectedImage(self._ref_image, new_info)
 
     @property
     def ref_image(self):
@@ -78,6 +86,10 @@ class DetectedImage:
             _ref_image_np = self._ref_image.numpy()
             _ref_image_np = _ref_image_np.transpose((1,2,0))
             return _ref_image_np.astype(np.uint8)
+        
+    @property
+    def image(self) -> np.ndarray:
+        return self.ref_image
 
 
 class FakeDetectedImage(DetectedImage):

@@ -21,7 +21,7 @@ class Detector(abc.ABC):
             assert isinstance(image, np.ndarray)
 
         outs: tp.List[pd.DataFrame] = self._detection_flow(images)
-        result = [dtp.DetectedImage(img, out) for img, out in zip(images, outs)]
+        result = [dtp.DetectedImage(img, out.reset_index(drop=True)) for img, out in zip(images, outs)]
         if len(result) == 1:
             result=result[0]
         return result

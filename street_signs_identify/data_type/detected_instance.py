@@ -15,7 +15,9 @@ class DetectedInstance:
     def __post_init__(self):
         if isinstance(self.bbox, torch.Tensor):
             bbox = self.bbox.detach().cpu().numpy()
-            self.bbox = np.round(bbox).astype(int)
+            self.bbox = bbox
+        self.bbox = np.maximum(self.bbox, 0).astype(float)
+        self.bbox = np.round(self.bbox).astype(int)
 
     @property
     def image(self):
@@ -31,3 +33,7 @@ class DetectedInstance:
             _ref_image_np = _ref_image_np.transpose((1,2,0))
             return _ref_image_np.astype(np.uint8)
         
+    @property
+    def legal(self):
+        x0, y0, x1, y1 = self.bbox
+        return x1>x0 and y1>y0

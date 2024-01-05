@@ -1,7 +1,9 @@
 import typing as tp
+
 import easyocr
 import numpy as np
 import pandas as pd
+import shapely
 
 from .detector import Detector
 
@@ -28,16 +30,22 @@ class CRAFTDetector(Detector):
                     df.loc[:, "score"] = 1.
                     outs_df.append(df)
 
-
-            for idx, bboxes in enumerate(f_list):
+            for _, bboxes in enumerate(f_list):
                 if bboxes:
-                    df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1"])
-                    bboxes_np = np.asarray(bboxes).squeeze()
-                    assert len(bboxes_np.shape)==2, bboxes_np
-                    df[["x0", "x1", "y0", "y1"]] = bboxes_np
-                    df.loc[:, "label"] = "f_list"
-                    df.loc[:, "score"] = 1.
+                    df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1", "polygon"])
+                    for idx, bbox in enumerate(bboxes):
+                        bbox_np = np.asarray(bbox)
+                        assert len(bboxes_np.shape)==2, bboxes_np
+                        polygon = shapely.Polygon(bbox_np)
+                        xs, ys = polygon.exterior.xy
+                        x0, x1 = min(xs), max(xs)
+                        y0, y1 = min(ys), max(ys)
+                        df.loc[idx, "polygon"] = polygon
+                        df.loc[idx, ["x0", "y0", "x1", "y1"]] = np.rint((x0, y0, x1, y1)).astype(int)
+                        df.loc[idx, "label"] = "f_list"
+                        df.loc[idx, "score"] = 1.
                     outs_df.append(df)
             full_df = pd.concat(outs_df, axis=0)
+
             all_dfs.append(full_df)
         return all_dfs
