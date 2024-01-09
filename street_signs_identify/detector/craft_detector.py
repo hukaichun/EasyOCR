@@ -35,7 +35,7 @@ class CRAFTDetector(Detector):
                     df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1", "polygon"])
                     for idx, bbox in enumerate(bboxes):
                         bbox_np = np.asarray(bbox)
-                        assert len(bboxes_np.shape)==2, bboxes_np
+                        assert len(bbox_np.shape)==2, bbox_np
                         polygon = shapely.Polygon(bbox_np)
                         xs, ys = polygon.exterior.xy
                         x0, x1 = min(xs), max(xs)

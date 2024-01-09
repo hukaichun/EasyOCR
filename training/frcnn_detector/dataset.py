@@ -20,7 +20,7 @@ def load_dataset(image_root:str,
                  shuffle:bool=True,
                  num_workers:int=6,
                  prefetch_factor:int=64,
-                 pin_memory:bool=True):
+                 pin_memory:bool=False):
     detection_dataset = DetectionDataset(image_root, annotation_file) 
     collate_fn = DetectionCollate(with_target=with_target)
     return DataLoader(detection_dataset,
