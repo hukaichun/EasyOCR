@@ -45,7 +45,10 @@ class CRAFTDetector(Detector):
                         df.loc[idx, "label"] = "f_list"
                         df.loc[idx, "score"] = 1.
                     outs_df.append(df)
-            full_df = pd.concat(outs_df, axis=0)
+            if outs_df:
+                full_df = pd.concat(outs_df, axis=0)
+            else:
+                full_df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1", "polygon"])
 
             all_dfs.append(full_df)
         return all_dfs
