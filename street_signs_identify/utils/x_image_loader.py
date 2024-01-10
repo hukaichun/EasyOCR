@@ -15,6 +15,18 @@ LOGGER = logging.getLogger(__name__)
 
 def _load_image(img_path) -> np.ndarray:
     image = Image.open(img_path).convert("RGB")
+    try:
+        exif = image._getexif()
+        orientation = exif.get(274, 1)
+    except (AttributeError, KeyError, IndexError):
+        orientation = 1
+
+    if orientation == 3:
+        image = image.rotate(180, expand=True)
+    elif orientation == 6:
+        image = image.rotate(-90, expand=True)
+    elif orientation == 8:
+        image = image.rotate(90, expand=True)
     image = ImageOps.exif_transpose(image)
     return np.array(image)
 
