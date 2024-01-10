@@ -24,7 +24,7 @@ class CRAFTDetector(Detector):
                 if bboxes:
                     df = pd.DataFrame(columns=["label", "score", "x0", "y0", "x1", "y1"])
                     bboxes_np = np.asarray(bboxes).squeeze()
-                    assert len(bboxes_np.shape)==2
+                    assert len(bboxes_np.shape)==2, f"{bboxes=}, {bboxes_np=}"
                     df[["x0", "x1", "y0", "y1"]] = bboxes_np
                     df.loc[:, "label"] = "h_list"
                     df.loc[:, "score"] = 1.
