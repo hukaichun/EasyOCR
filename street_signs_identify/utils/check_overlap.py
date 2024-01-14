@@ -57,6 +57,12 @@ def check_poly_overlap(info_1st:pd.DataFrame, index_1st:pd.Index,
     result_df["index_2nd"] = index_2nd
 
     def comput_intersection_area(poly_this:shapely.Polygon, poly_that:shapely.Polygon):
+        ## 檢查多邊形是否有效
+        if not poly_this.is_valid or not poly_that.is_valid:
+            ## 修復無效多邊形
+            poly_this = poly_this.buffer(0)
+            poly_that = poly_that.buffer(0)
+    
         poly_overlap = poly_this.intersection(poly_that)
         if poly_overlap.is_empty:
             return 0.
@@ -64,8 +70,15 @@ def check_poly_overlap(info_1st:pd.DataFrame, index_1st:pd.Index,
             return poly_overlap.area
         
     def comput_union_area(poly_this:shapely.Polygon, poly_that:shapely.Polygon):
+        ## 檢查多邊形是否有效
+        if not poly_this.is_valid or not poly_that.is_valid:
+            #@ 修復無效多邊形
+            poly_this = poly_this.buffer(0)
+            poly_that = poly_that.buffer(0)
+            
         _poly_union = shapely.union(poly_this, poly_that)
         poly_union = shapely.normalize(_poly_union)
+        
         return poly_union.area
 
     result_df["intersection_area"] = result_df.apply(lambda row: comput_intersection_area(info_1st.loc[row["index_1st"], "polygon"], info_2nd.loc[row["index_2nd"], "polygon"] ), axis=1)
