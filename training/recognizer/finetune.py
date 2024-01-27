@@ -17,6 +17,9 @@ from nltk.metrics.distance import edit_distance
 
 from utils import CTCLabelConverter
 
+import pandas as pd
+import os
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -135,13 +138,16 @@ def validation(model:torch.nn.Module,
                criterion:torch.nn.CTCLoss, 
                converter:CTCLabelConverter, 
                validation_set_loader:torch.utils.data.DataLoader,
+               path_to_raw_data,
                *,
-               DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+               DEVICE= torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+               ):
     n_correct = 0
     length_of_data = 0
     losses = []
     norm_EDs = []
     confidence_score_list = []
+    path_to_raw_data = path_to_raw_data
 
 
 
@@ -178,6 +184,18 @@ def validation(model:torch.nn.Module,
 
             length_of_data+=batch_size
             losses.append(cost.cpu().detach().numpy())
+            
+    ## confidence_score_list 
+    confidence_scores = [tensor.item() for tensor in confidence_score_list]  
+    print(confidence_scores)
+    print(preds_str)
+    
+    ## saving results
+    raw_data = pd.read_csv(os.path.join(path_to_raw_data, 'labels.csv'), encoding = 'big5')
+    raw_data['confidence_scores'] = confidence_scores
+    raw_data['preds_str'] = preds_str
+    raw_data.to_csv(os.path.join(path_to_raw_data, 'results.csv'), index=False, encoding='big5')
+
     
     model.train()
     accuracy = n_correct / float(length_of_data) 
@@ -188,6 +206,7 @@ def validation(model:torch.nn.Module,
         "Norm_ED": np.asarray(norm_EDs).mean()
     }
     return result
+
 
 
 
