@@ -16,6 +16,12 @@ def parse_dict_out(dict_out:tp.Dict):
     df.loc[:, ["x0", "y0", "x1", "y1"]] = dict_out["boxes"].numpy().round().astype(int)
     return df
 
+def parse_dict_out_v2(dict_out:tp.Dict, label_str: tp.List[str]):
+    df = parse_dict_out(dict_out)
+    df["label"] = df.apply(lambda row: label_str[row["label"]], axis=1)
+    return df
+
+
 
 class FRCNNDetector(torch.nn.Module):
     def __init__(self, classes:tp.List[str], *, model_ckpt:str=None):
@@ -38,13 +44,15 @@ class FRDetector(Detector):
     def __init__(self, *, 
                  classes:tp.List[str]=['1', '2', '3', '4', '5', 'blue', 'brown', 'green', 'red', 'yellow', 'parking', 'limit_h', 'limit_speed' ,'14', '15'], 
                  model_ckpt:str=None,
-                 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')) -> None:
+                 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+                 parse_label=False) -> None:
         super().__init__()
         self._detector = FRCNNDetector(classes, model_ckpt=model_ckpt)
         self._detector.to(DEVICE)
         self._detector.eval()
 
         self.__DEVICE = DEVICE
+        self.__parse_label = parse_label
 
 
     def _detection_flow(self, images: tp.List[np.ndarray]) -> tp.Dict:
@@ -55,5 +63,9 @@ class FRDetector(Detector):
         with torch.no_grad():
             outs_torch = self._detector(images_torch)
         outs = [{k:v.to("cpu") for k,v in out_torch.items()} for out_torch in outs_torch]
-        outs = [parse_dict_out(dict_out) for dict_out in outs]
+        
+        if self.__parse_label:
+            outs = [parse_dict_out_v2(dict_out, self._detector._classes) for dict_out in outs]
+        else:
+            outs = [parse_dict_out(dict_out) for dict_out in outs]
         return outs
