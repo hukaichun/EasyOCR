@@ -8,6 +8,7 @@ import pandas as pd
 from PIL import Image, ImageOps
 import numpy as np
 from matplotlib.patches import Ellipse
+import tqdm
 
 import shapely
 
@@ -50,7 +51,9 @@ def _load_annotation(path:Path):
 def annotation2df(annotation:tp.Dict):
     result_df = pd.DataFrame(columns=["filename", "size", "polygon", "category", "word"])
     global_index = 0
-    for _, v in annotation.items():
+    pbar = tqdm.tqdm(annotation.keys())
+    for k in pbar:
+        v = annotation[k]
         filename = v["filename"]
         size = v["size"]
         _region_list: tp.List[tp.Dict] = v["regions"]
@@ -84,9 +87,9 @@ def annotation2df(annotation:tp.Dict):
 
             _region_attributes = region["region_attributes"]
             category = _region_attributes["category"]
-            word = _region_attributes.get("word", None)
-            if word and not re.findall(r'\d+|[\u4e00-\u9fff]+|\*', word):
-                word = None
+            word = _region_attributes.get("word", "")
+            # Set the word to be empty string if the word does not contains number/chinese character/star symbol
+            if word and not re.findall(r'\d+|[\u4e00-\u9fff]+|\*', word): word = ""
 
             result_df.loc[global_index, "filename"] = filename
             result_df.loc[global_index, "size"] = size
@@ -97,7 +100,7 @@ def annotation2df(annotation:tp.Dict):
 
     empty_word_index = result_df["word"].isna()
     result_df.loc[~empty_word_index, "no_star"] = result_df.loc[~empty_word_index].apply(lambda row: "*" not in row["word"], axis=1)
-    result_df["ratio"] = result_df.apply(_compute_ratio, axis=1)
+    result_df["aspect_ratio"] = result_df.apply(_compute_ratio, axis=1)
     result_df[["x0", "y0", "x1", "y1"]] = result_df.apply(_extract_box, axis=1, result_type="expand")
 
     return result_df

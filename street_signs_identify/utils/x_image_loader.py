@@ -15,19 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _load_image(img_path) -> np.ndarray:
     image = Image.open(img_path).convert("RGB")
-    try:
-        exif = image._getexif()
-        orientation = exif.get(274, 1)
-    except (AttributeError, KeyError, IndexError):
-        orientation = 1
-
-    if orientation == 3:
-        image = image.rotate(180, expand=True)
-    elif orientation == 6:
-        image = image.rotate(-90, expand=True)
-    elif orientation == 8:
-        image = image.rotate(90, expand=True)
-    image = ImageOps.exif_transpose(image)
+    image = ImageOps.exif_transpose(image) # rotation here
     return np.array(image)
 
 def _load_info(labeling_file_path):
@@ -83,6 +71,6 @@ class XImageLoader:
             if not os.path.isfile(img_path):
                 LOGGER.warning("Ignore data whose file is not exist: \n%s", img_path)
                 not_exist_list.append(image_name)
-        
+
         for tmp in not_exist_list:
             self._image_names.remove(tmp)

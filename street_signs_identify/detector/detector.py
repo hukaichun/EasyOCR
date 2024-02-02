@@ -18,7 +18,7 @@ class Detector(abc.ABC):
     def __call__(self, *images:np.ndarray)-> tp.Union[tp.List[dtp.DetectedImage], dtp.DetectedImage]:
         # check all inputs are all valid
         for image in images:
-            assert isinstance(image, np.ndarray)
+            assert isinstance(image, np.ndarray), f"{type(image)}"
 
         outs: tp.List[pd.DataFrame] = self._detection_flow(images)
         result = [dtp.DetectedImage(img, out.reset_index(drop=True)) if len(out)>0 else None for img, out in zip(images, outs) ]
